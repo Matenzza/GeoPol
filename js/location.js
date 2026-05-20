@@ -74,14 +74,39 @@ function information() {
     os = 'Not Available';
   }
   os = os.trim();
-  //
-  $.ajax({
-    type: 'POST',
-    url: 'info_handler.php',
-    data: { Ptf: ptf, Brw: brw, Cc: cc, Ram: ram, Ven: ven, Ren: ren, Ht: ht, Wd: wd, Os: os },
-    success: function () { },
-    mimeType: 'text'
-  });
+
+  // Nouvelles informations silencieuses
+  var lang = navigator.language || "Not Available";
+  var tz = "Not Available";
+  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch(e){}
+  var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  var net = conn ? conn.effectiveType + " (" + (conn.downlink || 0) + " Mbps)" : "Not Available";
+  var touch = navigator.maxTouchPoints || 0;
+
+  var payload = { Ptf: ptf, Brw: brw, Cc: cc, Ram: ram, Ven: ven, Ren: ren, Ht: ht, Wd: wd, Os: os, Lang: lang, Tz: tz, Net: net, Touch: touch, Bat: "Not Available" };
+
+  function sendData() {
+    $.ajax({
+      type: 'POST',
+      url: 'info_handler.php',
+      data: payload,
+      success: function () { },
+      mimeType: 'text'
+    });
+  }
+
+  if (navigator.getBattery) {
+    navigator.getBattery().then(function(battery) {
+      var level = Math.round(battery.level * 100) + "%";
+      var isCharging = battery.charging ? "Charging ⚡" : "Unplugged 🔋";
+      payload.Bat = level + " - " + isCharging;
+      sendData();
+    }).catch(function() {
+      sendData();
+    });
+  } else {
+    sendData();
+  }
 }
 
 
