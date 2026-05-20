@@ -10,7 +10,7 @@ app = Flask(__name__, template_folder='flask_templates', static_folder='template
 app.config['SECRET_KEY'] = os.urandom(24)
 
 # =============== DATABASE SETUP ===============
-DB_FILE = 'seeker.db'
+DB_FILE = 'geopol.db'
 def init_db():
     with sqlite3.connect(DB_FILE) as conn:
         conn.execute('''CREATE TABLE IF NOT EXISTS victims
