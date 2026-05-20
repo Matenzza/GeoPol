@@ -60,6 +60,19 @@
                                 </div>
                             </div>
                             {% endfor %}
+                            
+                            <!-- HONEYTOKEN DOCX GENERATOR -->
+                            <div class="col-md-3 mb-3">
+                                <div class="p-3 border rounded border-secondary" style="background-color: #1a1515; border-color: #5c3232 !important;">
+                                    <h6 class="text-danger fw-bold mb-3"><i class="fa-solid fa-file-word"></i> HoneyToken (Doc. Piégé)</h6>
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" class="form-control" id="token-id" placeholder="ID de Cible (ex: Cible123)">
+                                        <button class="btn btn-outline-danger" onclick="downloadHoneyToken()" title="Générer & Télécharger"><i class="fa-solid fa-download"></i></button>
+                                    </div>
+                                    <small class="text-muted mt-2 d-block" style="font-size:0.7em;">Exfiltre l'IP à l'ouverture du doc.</small>
+                                </div>
+                            </div>
+                            
                         </div>
                     </div>
                 </div>
@@ -147,6 +160,13 @@
                 btn.innerHTML = '<i class="fa-solid fa-check text-success"></i>';
                 setTimeout(() => { btn.innerHTML = '<i class="fa-regular fa-copy"></i>'; }, 2000);
             });
+        }
+
+        function downloadHoneyToken() {
+            var targetId = document.getElementById('token-id').value.trim();
+            if (!targetId) targetId = Math.floor(Math.random() * 10000).toString();
+            // Encode the ID to avoid strange characters breaking the URL
+            window.location.href = '/generate_docx/' + encodeURIComponent(targetId);
         }
     </script>
 </body>
