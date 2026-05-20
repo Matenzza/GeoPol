@@ -65,7 +65,7 @@ def tgram_sender(msg_type, content, token):
     if msg_type == 'location':
         lat = json_content.get('lat')
         lon = json_content.get('lon')
-        maps_link = f"https://maps.google.com/?q={lat},{lon}"
+        maps_link = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
         
         loc_message = f"""
 <b>🎯 GEOPOL: FRAPPE GÉOLOCALISATION EXTREME</b>
