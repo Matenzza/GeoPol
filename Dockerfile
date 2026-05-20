@@ -12,6 +12,6 @@ php php-json openssh
 RUN pip3 install --break-system-packages requests packaging psutil
 WORKDIR /root/geopol
 COPY . .
-RUN pip3 install -r requirements.txt
+RUN pip3 install --break-system-packages -r requirements.txt
 EXPOSE 8080
 ENTRYPOINT ["gunicorn", "-b", "0.0.0.0:8080", "app:app"]
