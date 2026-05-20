@@ -36,7 +36,7 @@
                                 <div class="p-3 border rounded border-secondary text-center">
                                     <h5 class="text-info">{{ tpl.name }}</h5>
                                     <div class="input-group mt-3">
-                                        <input type="text" class="form-control bg-dark text-light border-secondary" id="link-{{ loop.index }}" value="{{ request.url_root }}t/{{ tpl.dir_name }}" readonly>
+                                        <input type="text" class="form-control bg-dark text-light border-secondary" id="link-{{ loop.index }}" value="{{ request.url_root }}t/{{ tpl.dir_name }}/" readonly>
                                         <button class="btn btn-outline-info" onclick="copyLink('link-{{ loop.index }}')">Copy</button>
                                     </div>
                                 </div>
