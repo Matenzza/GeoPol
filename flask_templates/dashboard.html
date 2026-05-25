@@ -159,9 +159,12 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            {% if v.lat and v.lon %}
-                                            <a href="https://maps.google.com/?q={{ v.lat }},{{ v.lon }}" target="_blank" class="btn btn-sm btn-outline-success w-100 mb-1">
-                                                <i class="fa-solid fa-map-location-dot"></i> Open Maps
+                                            {% if v.lat and v.lon and v.lat != 'None' %}
+                                            <button onclick="focusMap({{ v.lat | replace(' deg', '') }}, {{ v.lon | replace(' deg', '') }})" class="btn btn-sm btn-outline-info w-100 mb-1">
+                                                <i class="fa-solid fa-location-crosshairs"></i> View on Map
+                                            </button>
+                                            <a href="https://maps.google.com/?q={{ v.lat | replace(' deg', '') }},{{ v.lon | replace(' deg', '') }}" target="_blank" class="btn btn-sm btn-outline-success w-100 mb-1">
+                                                <i class="fa-solid fa-map-location-dot"></i> Google Maps
                                             </a>
                                             <div class="text-center"><small>Accuracy: <strong class="text-warning">{{ v.acc }}m</strong></small></div>
                                             {% else %}
@@ -201,6 +204,13 @@
             if (!targetId) targetId = Math.floor(Math.random() * 10000).toString();
             // Encode the ID to avoid strange characters breaking the URL
             window.location.href = '/generate_docx/' + encodeURIComponent(targetId);
+        }
+
+        function focusMap(lat, lon) {
+            if (map) {
+                map.setView([lat, lon], 17);
+                document.getElementById('liveMap').scrollIntoView({ behavior: 'smooth' });
+            }
         }
     </script>
     
