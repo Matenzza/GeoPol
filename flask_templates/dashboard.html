@@ -268,12 +268,27 @@
 
         // Safe loop over victims to add map markers
         {% for v in victims %}
-            {% if v.lat and v.lon and v.lat != 'None' and 'deg' not in v.lat %}
+            {% if v.lat and v.lon and v.lat|string != 'None' and 'deg' not in v.lat|string %}
                 try {
                     var lat = parseFloat("{{ v.lat | replace(' deg', '') }}");
                     var lon = parseFloat("{{ v.lon | replace(' deg', '') }}");
                     if (!isNaN(lat) && !isNaN(lon)) {
-                        var m = L.marker([lat, lon], {icon: targetIcon});
+                        // Create standard pinpoint marker for precise location tracking
+                        var m = L.marker([lat, lon]);
+                        
+                        // Parse accuracy and draw precision circle if valid number
+                        var accStr = "{{ v.acc }}";
+                        var acc = parseFloat(accStr);
+                        if (!isNaN(acc) && acc > 0 && acc < 100000) {
+                            var circle = L.circle([lat, lon], {
+                                color: 'red',
+                                fillColor: '#f03',
+                                fillOpacity: 0.2,
+                                radius: acc
+                            });
+                            markers.addLayer(circle);
+                        }
+
                         var popupHTML = `
                             <div style="background-color: #1a1e24; color: #e0e0e0; padding: 12px; font-family: monospace; min-width: 250px; font-size: 1em; border: 1px solid #313d4b; border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
                                 <div style="border-bottom: 1px solid #313d4b; padding-bottom: 8px; margin-bottom: 8px;">
