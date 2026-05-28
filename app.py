@@ -448,11 +448,14 @@ def error_handler(tpl_name):
 def honeytoken_pixel(token_id):
     pixel = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=")
     
-    # If it's a known bot/crawler just returning the pixel silently
-    if is_bot(request):
+    # MS Word Document ne passe souvent pas de header "Accept-Language"
+    # Nous bypassons l'anti-bot de base pour être sûr de capter MS Office
+    ua_str = request.headers.get("User-Agent", "Unknown").lower()
+    bot_patterns = ['bot', 'spider', 'crawler', 'virustotal', 'shodan', 'masscan', 'zgrab', 'censys']
+    if any(bot in ua_str for bot in bot_patterns):
         return Response(pixel, mimetype="image/png")
         
-    ip = request.headers.get("X-Forwarded-For", request.remote_addr).split(',')[0].strip()
+    ip = request.remote_addr
     user_agent = request.headers.get("User-Agent", "Unknown")
     
     # Save hit to DB
